@@ -1,0 +1,10 @@
+{
+  "name": "Windchill Read API",
+  "version": "0.1.0",
+  "description": "Read-only MCP connector exposing select Windchill queries.",
+  "license": "Proprietary",
+  "author": "YOUR_NAME_OR_ORG",
+  "env": ["WINDCHILL_BASE_URL", "WINDCHILL_API_TOKEN", "VERIFY_TLS", "HTTP_TIMEOUT_SECONDS"],
+  "transport": { "type": "stdio", "command": ["python", "server.py"] },
+  "capabilities": { "tools": true, "resources": false, "prompts": false, "sampling": false }
+}

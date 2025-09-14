@@ -1,87 +1,87 @@
-# wrs_mcp
+# Windchill MCP Connector
 
-Windchill MCP Connector
+Minimal, production-ready [Model Context Protocol](https://github.com/modelcontextprotocol) server exposing
+read-only access to PTC Windchill.
 
-This repository contains a custom Model Context Protocol (MCP) server for PTC Windchill. It exposes a read-only API to Windchill objects (e.g., WTParts) so that AI assistants like ChatGPT (with Developer Mode enabled) can query product data in a controlled and secure way.
+## Features
+- ✅ Stdio transport MCP server using the official Python SDK.
+- ✅ Tools: `health_check`, `list_parts`, `get_part`.
+- ✅ Defensive HTTP client with timeouts, TLS verification, and auth token.
+- ✅ Linting (ruff), testing (pytest), and GitHub Actions CI.
 
-## ✨ Features
-
-- Implements an MCP server using the official Python SDK.
-- Exposes Windchill data as simple, AI-friendly tools:
-  - `health_check` – verify connection
-  - `list_parts` – list recent WTParts in a container
-  - `get_part` – fetch details for a single WTPart
-- Uses Windchill REST/OData endpoints (swap in your own paths).
-- Ships with a manifest (`mcp.json`) so it can be registered as a ChatGPT connector.
-- Designed for read-only access by default.
-
-## 📂 Project Structure
-
+## Architecture
 ```
-windchill-mcp/
-├─ server.py          # MCP server implementation (Python)
-├─ mcp.json           # Connector manifest
-├─ requirements.txt   # Python dependencies
-└─ README.md          # Documentation
++------------+      stdio      +--------------------+
+| ChatGPT    | <-------------> | windchill-mcp      |
+| (Developer)|                 |  WindchillClient   |
++------------+                 +---------+----------+
+                                        |
+                                        | HTTPS REST/OData
+                                        v
+                                    PTC Windchill
 ```
 
-## 🚀 Getting Started
+## Setup
+1. **Clone and install**
+   ```bash
+   git clone https://github.com/ORG/REPO_NAME.git
+   cd REPO_NAME
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. **Configure environment** – copy `.env.example` → `.env` and edit values:
+   - `WINDCHILL_BASE_URL`
+   - `WINDCHILL_API_TOKEN`
+   - `VERIFY_TLS` (`true`/`false`)
+   - `HTTP_TIMEOUT_SECONDS`
 
-1. Clone & set up the project:
-
-```bash
-git clone https://github.com/your-org/windchill-mcp.git
-cd windchill-mcp
-
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-2. Configure environment variables:
-
-```bash
-export WINDCHILL_BASE_URL="https://plm.example.com/Windchill/servlet/odata/v3"
-export WINDCHILL_API_TOKEN="your_service_token_here"
-export VERIFY_TLS=true
-```
-
-3. Run the MCP server:
-
+## Running
 ```bash
 python server.py
 ```
+The server prints a single line and waits on stdio for MCP requests.
 
-This will launch the MCP server on stdio transport, ready for ChatGPT or another MCP client.
+## ChatGPT Custom Connector
+1. Enable **Developer Mode** in ChatGPT → *Settings → Connectors*.
+2. Add a **Custom Connector** pointing at this repo's `mcp.json`.
+3. Tools `health_check`, `list_parts`, `get_part` appear for use.
 
-## 🔗 Using with ChatGPT
+### Example Calls
+```jsonc
+// health_check
+{"tool": "health_check", "arguments": {}}
+// → {"ok": "true", "base_url": "https://plm.example.com/..."}
 
-1. In ChatGPT, go to **Settings → Connectors → Advanced**.
-2. Enable **Developer Mode**.
-3. Add a Custom Connector and point it to this repo’s `mcp.json`.
-4. The tools (`health_check`, `list_parts`, `get_part`) will appear as callable actions in ChatGPT.
+// list_parts
+{"tool": "list_parts", "arguments": {"container": "Demo", "limit": 2}}
+// → [{"partNumber": "123", "name": "Bolt", ...}, ...]
 
-## 🛡️ Security & Safety
-
-- Read-only by default – no mutations (create, revise, delete) are exposed.
-- Requires a service account token or API key with limited scope.
-- Always validate and sanitize input when extending with new tools.
-- If you add write tools (e.g., create Change Notices), ensure you implement explicit confirmation and audit logging.
-
-## 🧩 Extending
-
-Add new tools to `server.py` to expose other Windchill endpoints, for example:
-
-```
-search_documents(query, container, limit)
-get_bom(partNumber, depth)
-list_change_notices(container, state, limit)
+// get_part
+{"tool": "get_part", "arguments": {"partNumber": "123"}}
+// → {"partNumber": "123", "name": "Bolt", ...}
 ```
 
-## ⚠️ Disclaimer
+## Security Notes
+- Read-only tools; no mutations.
+- Use a low-privilege service account token.
+- TLS verification enabled by default.
+- Consider rate limiting and audit logging when extending.
 
-This connector is provided as a starting point. You are responsible for ensuring compliance with your company’s IT security policies, export controls, and data governance rules before deploying in production.
+## Troubleshooting
+| Symptom | Fix |
+|---------|-----|
+| `401 Unauthorized` | Ensure `WINDCHILL_API_TOKEN` is valid. |
+| SSL certificate errors | Set `VERIFY_TLS=false` only for testing. |
+| Hanging requests | Check network connectivity or reduce `HTTP_TIMEOUT_SECONDS`. |
 
-## 📜 License
+## Roadmap
+- Input validation and richer models.
+- More endpoints (search, BOM, change notices).
+- Optional caching and rate limiting.
 
-Proprietary – for internal use only (adapt as needed).
+## Next steps
+Ideas for expansion:
+- `search_documents(query)`
+- `get_bom(partNumber, depth)`
+- `list_change_notices(container, state, limit)`
